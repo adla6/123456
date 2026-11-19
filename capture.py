@@ -69,13 +69,3 @@ if now.hour == 0:
         print(f"Created GIF: {gif_name}")
         print(f"Frames: {len(recent)}")
 
-# Remove snapshots older than 24 hours
-for file in SNAPSHOTS.glob("US_*.png"):
-    file_time = datetime.strptime(
-        file.stem.replace("US_", ""),
-        "%Y%m%d_%H%M%S"
-    ).replace(tzinfo=timezone.utc)
-
-    if file_time < now - timedelta(hours=24):
-        file.unlink()
-        print(f"Deleted old snapshot: {file}")
