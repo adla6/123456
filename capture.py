@@ -1,5 +1,4 @@
 
-import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from io import BytesIO
@@ -18,29 +17,34 @@ GIFS.mkdir(exist_ok=True)
 now = datetime.now(timezone.utc)
 timestamp = now.strftime("%Y%m%d_%H%M%S")
 
-# Download latest weather map
+# 1. Download weather map
 response = requests.get(
     URL,
-    headers={"User-Agent": "WeatherMapArchive/1.0", "Cache-Control": "no-cache"},
+    headers={
+        "User-Agent": "WeatherMapArchive/1.0 contact: admin@example.com",
+        "Cache-Control": "no-cache"
+    },
     timeout=30
 )
 response.raise_for_status()
 
-# Save timestamped PNG
+# 2. Save timestamped PNG
 image = Image.open(BytesIO(response.content)).convert("RGB")
+
 filename = SNAPSHOTS / f"US_{timestamp}.png"
 image.save(filename)
 
-print(f"Saved: {filename}")
+image.close()
 
-# Generate daily GIF at midnight UTC
-if now.hour == 0:
-    cutoff = now 
+print(f"Saved PNG: {filename}")
 
-    files = sorted(SNAPSHOTS.glob("US_*.png"))
-    recent = []
+# 3. Find snapshots from the last 24 hours
+cutoff = now - timedelta(hours=24)
 
-    for file in files:
+recent = []
+
+for file in sorted(SNAPSHOTS.glob("US_*.png")):
+    try:
         file_time = datetime.strptime(
             file.stem.replace("US_", ""),
             "%Y%m%d_%H%M%S"
@@ -49,23 +53,48 @@ if now.hour == 0:
         if file_time >= cutoff:
             recent.append(file)
 
-    if recent:
-        frames = [Image.open(f).convert("RGB") for f in recent]
+    except ValueError:
+        continue
 
-        gif_name = GIFS / f"US_Warnings_{now.strftime('%Y%m%d')}.gif"
+# 4. ALWAYS generate GIF, even with one frame
+if not recent:
+    recent = [filename]
 
-        frames[0].save(
-            gif_name,
-            save_all=True,
-            append_images=frames[1:],
-            duration=500,
-            loop=0,
-            optimize=True
-        )
+frames = []
 
-        for frame in frames:
-            frame.close()
+for file in recent:
+    with Image.open(file) as img:
+        frames.append(img.convert("RGB"))
 
-        print(f"Created GIF: {gif_name}")
-        print(f"Frames: {len(recent)}")
+gif_name = GIFS / f"US_Warnings_{now.strftime('%Y%m%d')}.gif"
 
+frames[0].save(
+    gif_name,
+    format="GIF",
+    save_all=True,
+    append_images=frames[1:],
+    duration=500,
+    loop=0,
+    optimize=True
+)
+
+for frame in frames:
+    frame.close()
+
+print(f"GIF generated: {gif_name}")
+print(f"Total frames: {len(recent)}")
+
+# 5. Remove snapshots older than 24 hours
+for file in SNAPSHOTS.glob("US_*.png"):
+    try:
+        file_time = datetime.strptime(
+            file.stem.replace("US_", ""),
+            "%Y%m%d_%H%M%S"
+        ).replace(tzinfo=timezone.utc)
+
+        if file_time < cutoff:
+            file.unlink()
+            print(f"Deleted: {file}")
+
+    except ValueError:
+        continue
