@@ -35,7 +35,7 @@ print(f"Saved: {filename}")
 
 # Generate daily GIF at midnight UTC
 if now.hour == 0:
-    cutoff = now - timedelta(hours=24)
+    cutoff = now 
 
     files = sorted(SNAPSHOTS.glob("US_*.png"))
     recent = []
