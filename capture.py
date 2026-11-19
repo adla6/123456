@@ -66,7 +66,7 @@ for file in recent:
     with Image.open(file) as img:
         frames.append(img.convert("RGB"))
 
-gif_name = GIFS / f"US_Warnings_{now.strftime('%Y%m%d')}.gif"
+gif_name = GIFS / f"US_.gif"
 
 frames[0].save(
     gif_name,
